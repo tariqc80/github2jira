@@ -1,0 +1,13 @@
+#js-repo-pjax-container a.github-goto-jira {
+	margin-left: 5px;
+	border-radius: 5px 5px;
+	border: solid black 1px;
+	padding: 2px 10px;
+	background-color: rgb(32, 80, 129);
+    color: white;
+    text-decoration: none;
+}
+
+#js-repo-pjax-container a.github-goto-jira:hover {
+	background-color: rgb(132, 180, 129);
+}
