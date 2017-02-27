@@ -8,6 +8,11 @@
     text-decoration: none;
 }
 
+#js-repo-pjax-container .mt-1.text-small a.github-goto-jira {
+	padding: 0px 5px;
+	margin: 0;
+}
+
 #js-repo-pjax-container a.github-goto-jira:hover {
 	background-color: rgb(132, 180, 129);
 }
