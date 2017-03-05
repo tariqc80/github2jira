@@ -1,14 +1,86 @@
 <!DOCTYPE html>
 <html>
-<head><title>github2jira settings</title></head>
+<head>
+    <title>Settings - Oh That Issue</title>
+    <style type="text/css">
+        .container {
+            margin: 50px 150px;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            margin: 10px 50px;
+        }
+
+        form fieldset {
+            margin-bottom: 25px;
+            padding: 10px;
+        }
+
+        form fieldset div {
+            margin-bottom: 5px;
+        }
+
+        form fieldset div label {
+            display: inline-block;
+            width: 150px;
+        }
+
+        form fieldset div input[type="text"] {
+            width: 300px;
+        }
+
+        form input:disabled {
+            border: none;
+        }
+
+    </style>
+</head>
 
 <body>
-	<label for="jira_server">Jira Server Url</label>
-	<input type="text" id="jira_server" name="jira_server" size="75"/>
-	<span id="messages"></span>
+    <div class="container">
+        <h1>Oh That Issue</h1>
+        <h2>Settings</h2>
+        <form id="oh-that-issue-settings-form" action="">
+            <fieldset>
+                <legend>Issue Tracker Type</legend>
+                <div>
+                    <label for="issue-tracker-jira">
+                        <input id="issue-tracker-jira" class="issue-tracker-radio" type="radio" name="issue_tracker_type" value="jira" checked="checked"/>
+                        Jira
+                    </label>
+                </div>
 
-	<button id="save">Save</button>
-	<script src="options.js"></script>
+                <div>
+                    <label for="issue-tracker-other">
+                        <input id="issue-tracker-other" class="issue-tracker-radio" type="radio" name="issue_tracker_type" value="other"/>
+                        Other
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Details</legend>
+
+                <div>
+                    <label for="issue-tracker-url">URL to Issue:</label>
+        	        <input type="text" id="issue-tracker-url" name="issue_tracker_url"/>
+                </div>
+
+                <div>
+                    <label for="issue-key-pattern">Issue RegExp Pattern: </label>
+                    <input type="text" id="issue-key-pattern" name="issue_key_pattern"/>
+                </div>
+            </fieldset>
+
+        	<span id="messages"></span>
+
+        	<input type="button" id="save" value="Save" />
+        </form>
+
+    	<script src="options.js" type="application/javascript"></script>
+    </div>
 </body>
 
 </html>

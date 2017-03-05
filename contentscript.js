@@ -1,91 +1,109 @@
-// console.info('You are at github.com so github2jira loaded!  Aren\'t you lucky?');
+/* global chrome */
+const LOCAL_STORAGE_KEY = 'infiniteapps_oh_that_issue';
 
-chrome.storage.sync.get('github2jira', function (settings) {
-    init(settings['github2jira']);
+chrome.storage.sync.get(LOCAL_STORAGE_KEY, function (storage_object) {
+    init(storage_object[LOCAL_STORAGE_KEY].default);
 });
 
-var processPage = function (settings) {
-    /*
-     Pull Request List Page
-     */
-    if (window.location.href.match(/https:\/\/github\.com\/.*\/.*\/pulls/)) {
-        addButtonToPullRequestList(settings);
+chrome.storage.sync.get('github2jira', function(old_settings) {
+    console.log(old_settings);
+    if (typeof old_settings.github2jira !== 'undefined') {
+        let div = document.createElement('div');
+        div.setAttribute('class', 'oh-that-issue-flash-message');
+        div.innerHTML = '<span>Oh That Issue notice</span>Existing settings for the older extension "github2jira" were found.' +
+            '<br \>Please visit the <a target="_blank" href="' + chrome.runtime.getURL('options.html') + '">Settings page</a> to reconfigure.';
+        let body = document.getElementsByTagName('body')[0];
+        body.insertBefore(div, body.firstChild);
     }
+});
 
-    /*
-     Pull Request Page
-     */
-    if (window.location.href.match(/https:\/\/github\.com\/.*\/.*\/pull\/[0-9]+/)) {
-        var elements = getBranchElementsFromPullRequestPage(settings);
-        if (elements.length > 0) {
-            addGotoJiraButton(elements, settings.default.jira_server);
+var processTarget = function (target, config) {
+    var existing_button = target.getElementsByClassName('oh-that-issue-goto-btn');
+
+    if (existing_button.length === 0) {
+        /*
+         Pull Request List Page
+         */
+        if (window.location.href.match(/https:\/\/github\.com\/.*\/.*\/pulls/)) {
+            addButtonsToPullRequestList(target, config);
+        }
+
+        /*
+         Pull Request Page
+         */
+        if (window.location.href.match(/https:\/\/github\.com\/.*\/.*\/pull\/[0-9]+/)) {
+            addButtonToPullRequestDetail(config);
         }
     }
 };
 
-var init = function (settings) {
+var init = function (config) {
     var observer = new MutationObserver(function (mutations) {
         /*
          Check if the "js-repo-pjax-container" has been mutated, and if so process the page to add the buttons
          */
-        var process = false;
         for (var i = 0; i < mutations.length; i++) {
-            if (mutations[i].target.id === "js-repo-pjax-container") {
-                process = true;
-                break;
+            if (mutations[i].target.id === 'js-repo-pjax-container' ||
+                mutations[i].target.classList.contains('js-issues-results') ) {
+                if (mutations[i].addedNodes.length > 0) {
+                    processTarget(mutations[i].target, config);
+                    break;
+                }
             }
-        }
-
-        if (process) {
-            processPage(settings);
         }
     });
 
     // configuration of the observer:
-    var body   = document.getElementsByTagName('body');
-    var config = {childList: true, subtree: true};
+    var body = document.getElementsByTagName('body')[0];
 
     // pass in the target node, as well as the observer options
-    observer.observe(body[0], config);
+    observer.observe(body, {childList: true, subtree: true});
 
-    processPage(settings);
+    processTarget(body, config);
 };
 
-var createGotoJiraButton = function (url) {
-    button             = document.createElement('a');
-    button.textContent = 'Goto Jira Ticket';
+var createButton = function (text, url) {
+    var button = document.createElement('a');
+
+    button.textContent = text;
     button.setAttribute('href', url);
     button.setAttribute('title', url);
-    button.setAttribute('class', 'github-goto-jira');
+    button.setAttribute('class', 'oh-that-issue-goto-btn');
 
     return button;
 };
 
-var addButtonToPullRequestList = function (settings) {
-    var rows     = document.getElementsByClassName('issues-listing')[0].querySelectorAll('.js-issue-row');
-    var jira_url = settings.default.jira_server;
+var addButtonsToPullRequestList = function (target, config) {
+    var rows = target.getElementsByClassName('issues-listing')[0].querySelectorAll('.js-issue-row');
 
     for (var i = 0; i < rows.length; i++) {
-        var element = rows[i].querySelector('.lh-condensed');
-        var text    = element.querySelector('a.js-navigation-open').innerText;
-        var parts;
+        let element = rows[i].querySelector('.lh-condensed');
 
-        if (parts = text.match(/([a-zA-Z0-9]+-[0-9]+).*$/)) {
-            var issue  = parts[1];
-            var button = createGotoJiraButton(jira_url + '/browse/' + issue);
+        /*
+         * get pull request description text
+         */
+        let text = element.querySelector('a.js-navigation-open').innerText;
+        let pattern = new RegExp(config.issue_key_pattern);
+        let parts = text.match(pattern);
 
-            var span = document.createElement('span');
+        if (parts) {
+            let issue  = parts[1];
+            let button = createButton('Goto ' + config.issue_tracker_type + ' issue', config.issue_tracker_url + issue);
+            let span = document.createElement('span');
+
             span.setAttribute('class', 'mt-1 text-small');
             span.appendChild(button);
-
-            element.insertBefore(span, element.firstChild)
+            element.insertBefore(span, element.firstChild);
         }
     }
 };
 
-var getBranchElementsFromPullRequestPage = function () {
+var addButtonToPullRequestDetail = function (config) {
     var branch_elements = [];
 
+    /*
+     * find the elements that have the branch names
+     */
     branch_elements.push(document.getElementById('js-repo-pjax-container')
         .getElementsByClassName('base-ref')[0]
         .getElementsByTagName('span')[0]);
@@ -93,19 +111,15 @@ var getBranchElementsFromPullRequestPage = function () {
         .getElementsByClassName('head-ref')[0]
         .getElementsByTagName('span')[0]);
 
-    return branch_elements;
-};
-
-var addGotoJiraButton = function (branch_elements, jira_url) {
-    var branch_parts;
-    var existing_button = document.getElementsByClassName('github-goto-jira');
-
-    if (existing_button.length < 1) {
-        for (var index = 0; index < branch_elements.length; index++) {
-            if (branch_parts = branch_elements[index].textContent.match(/^(.*)\/(.*-[0-9]+).*$/)) {
-                var button = createGotoJiraButton(jira_url + '/browse/' + branch_parts[2]);
-                branch_elements[index].parentNode.parentNode.insertBefore(button, branch_elements[index].parentNode.nextSibling);
-            }
+    /*
+     * parse the branch names for a valid issue key
+     */
+    for (var index = 0; index < branch_elements.length; index++) {
+        let pattern = new RegExp(config.issue_key_pattern);
+        let branch_parts = branch_elements[index].textContent.match(pattern);
+        if (branch_parts) {
+            let button = createButton('Goto ' + config.issue_tracker_type + ' issue', config.issue_tracker_url + branch_parts[1]);
+            branch_elements[index].parentNode.parentNode.insertBefore(button, branch_elements[index].parentNode.nextSibling);
         }
     }
 };
